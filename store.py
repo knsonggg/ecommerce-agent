@@ -61,7 +61,7 @@ def validate(kind, value):
             raise Problem(400, '上架状态须为布尔值')
     elif kind == 'orders':
         out['status'] = text(v.get('status'), '订单状态', 30)
-        if out['status'] not in ('待付款', '待发货', '运输中', '已完成', '已取消', '售后中'):
+        if out['status'] not in ('待付款', '待发货', '运输中', '已完成', '已取消', '售后中', '已退款'):
             raise Problem(400, '不支持的订单状态')
         out['items'] = strings(v.get('items'), '订单商品')
         if not out['items']:

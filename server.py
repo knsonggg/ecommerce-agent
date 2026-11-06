@@ -15,8 +15,9 @@ from http.cookies import SimpleCookie
 from socketserver import ThreadingMixIn
 from urllib.parse import urlsplit
 from wsgiref.simple_server import WSGIServer, WSGIRequestHandler, make_server
-from agent import ROOT, chat, data_scope, load_env, run_tool
+from agent import ROOT, chat, data_scope, load_env, run_tool, explicit_aftersale
 from store import Store, Problem, text
+from aftersales import AfterSales
 
 load_env()
 LOG = logging.getLogger('commerce')
@@ -45,6 +46,7 @@ class Limiter:
 class App:
     def __init__(self, store=None, origin=None, production=False):
         self.store = store or Store(os.environ.get('COMMERCE_DB') or None)
+        self.aftersales = AfterSales(self.store)
         self.origin = (origin or os.environ.get('APP_ORIGIN', 'http://127.0.0.1:8000')).rstrip('/')
         self.production = production
         parsed = urlsplit(self.origin)
@@ -164,6 +166,8 @@ class App:
                     return ok(run_tool('analyze_selection', {}))
             if path == '/api/tickets':
                 return ok(self.store.tickets())
+            if path == '/api/aftersales':
+                return ok(self.aftersales.list())
             match = re.fullmatch(r'/api/tickets/(TK-[A-F0-9]{10})', path)
             if match:
                 return ok(self.store.ticket_detail(match[1]))
@@ -188,7 +192,8 @@ class App:
                     raise Problem(429, '客服助手当前繁忙，请稍后重试')
                 try:
                     started = time.monotonic()
-                    with data_scope(self.store.snapshot()):
+                    order_ids=re.findall(r'[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*',message)
+                    with data_scope(self.store.snapshot(), self.aftersales, uid, rid, explicit_aftersale(message), order_ids):
                         result = chat(message, prior)
                     result['elapsed_ms'] = round((time.monotonic() - started) * 1000)
                     self.store.finish_turn(cid, uid, lease, rid, message, result)
@@ -200,6 +205,11 @@ class App:
                 return ok(self.store.create_ticket(uid, body), 201)
             if path == '/api/tickets/update':
                 return ok(self.store.update_ticket(uid, body))
+            if path == '/api/aftersales':
+                return ok(self.aftersales.request(uid, body, body.get('request_id')))
+            if path == '/api/aftersales/decision':
+                self.admin(user)
+                return ok(self.aftersales.decide(uid, body))
             match = re.fullmatch(r'/api/records/(products|orders|policies)(/import)?', path)
             if match:
                 self.admin(user)

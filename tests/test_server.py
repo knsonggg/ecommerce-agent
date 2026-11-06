@@ -198,6 +198,56 @@ class WorkflowTests(unittest.TestCase):
         data=json.dumps(self.req('/api/audits'))
         self.assertNotIn(PASSWORD,data)
 
+    def test_small_refund_auto_simulation_and_idempotency(self):
+        body={'order_id':'DEMO1002','kind':'refund_only','reason':'顾客不需要了','request_id':'refund-small'}
+        case=self.req('/api/aftersales',body,client=self.staff)
+        self.assertEqual(case['status'],'simulated_completed')
+        self.assertEqual(case['amount_cents'],8900)
+        self.assertEqual(self.req('/api/aftersales',body,client=self.staff),case)
+        self.req('/api/aftersales',{**body,'request_id':'duplicate'},409)
+        self.assertEqual(len(self.req('/api/aftersales')),1)
+        self.assertEqual(self.store.records('orders')[1]['status'],'已取消')
+
+    def test_return_requires_approval_and_receipt(self):
+        case=self.req('/api/aftersales',{'order_id':'DEMO1001','kind':'return_refund','reason':'申请退货','request_id':'return-1'})
+        self.assertEqual(case['status'],'pending_review')
+        update={'id':case['id'],'decision':'approve','note':'同意退货'}
+        self.req('/api/aftersales/decision',update,403,self.staff)
+        case=self.req('/api/aftersales/decision',update)
+        self.assertEqual(case['status'],'awaiting_return')
+        self.assertEqual(self.store.records('orders')[0]['status'],'运输中')
+        done=self.req('/api/aftersales/decision',{'id':case['id'],'decision':'received','note':'核对退货并验收通过'})
+        self.assertEqual(done['status'],'simulated_completed')
+        self.assertEqual(self.store.records('orders')[0]['status'],'已退款')
+        self.req('/api/aftersales/decision',{'id':case['id'],'decision':'received','note':'重复操作'},409)
+
+    def test_large_refund_requires_admin_and_stale_order_rejected(self):
+        order=self.store.records('orders')[1];order['amount']=299
+        self.store.save_record('orders',order,self.admin['id'])
+        case=self.req('/api/aftersales',{'order_id':'DEMO1002','kind':'refund_only','reason':'顾客退款','request_id':'large'})
+        self.assertEqual(case['status'],'pending_review')
+        order=self.store.records('orders')[1];order['status']='运输中'
+        self.store.save_record('orders',order,self.admin['id'])
+        self.req('/api/aftersales/decision',{'id':case['id'],'decision':'approve','note':'审核'},409)
+        self.req('/api/aftersales/decision',{'id':case['id'],'decision':'reject','note':'订单已发货，需重新申请退货'})
+
+    def test_cancel_unpaid_and_reject_wrong_kind(self):
+        order=self.store.records('orders')[1];order['status']='待付款'
+        self.store.save_record('orders',order,self.admin['id'])
+        self.req('/api/aftersales',{'order_id':'DEMO1002','kind':'refund_only','reason':'错误类型','request_id':'bad'},409)
+        case=self.req('/api/aftersales',{'order_id':'DEMO1002','kind':'cancel','reason':'不买了','request_id':'cancel'})
+        self.assertEqual(case['amount_cents'],0)
+        self.assertEqual(case['status'],'simulated_completed')
+
+    @patch.dict(os.environ, {'DEEPSEEK_API_KEY':''})
+    def test_agent_handles_explicit_refund_but_not_question(self):
+        cid=self.new_conversation()
+        result=self.req('/api/chat',{'conversation_id':cid,'message':'订单 DEMO1002 可以退款吗？','request_id':'ask'})
+        self.assertEqual(self.req('/api/aftersales'),[])
+        result=self.req('/api/chat',{'conversation_id':cid,'message':'请申请订单 DEMO1002 退款，原因：不需要了','request_id':'act'})
+        self.assertIn('本地模拟完成',result['reply'])
+        self.assertEqual(len(self.req('/api/aftersales')),1)
+
 
 if __name__=='__main__':
     unittest.main()

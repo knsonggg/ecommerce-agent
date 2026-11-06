@@ -33,6 +33,11 @@ class AgentTests(unittest.TestCase):
         self.assertTrue(result['handoff_recommended'])
         self.assertIn('没有匹配依据', result['reply'])
 
+    def test_refund_intent_excludes_questions_and_negation(self):
+        for message in ['请不要取消订单 DEMO1002','只查询退款状态','可以申请退款吗？']:
+            self.assertFalse(agent.explicit_aftersale(message))
+        self.assertTrue(agent.explicit_aftersale('请申请订单 DEMO1002 退款'))
+
     def test_nonfinite_budget_rejected(self):
         with self.assertRaises(ValueError):
             agent.run_tool('search_products', {'budget': float('nan')})
