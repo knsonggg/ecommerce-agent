@@ -28,6 +28,32 @@ class AgentTests(unittest.TestCase):
         result = agent.demo_reply('给它写文案', [{'role':'user','content':'云感降噪耳机'}])
         self.assertIn('云感降噪耳机', result['reply'])
 
+    def test_unknown_policy_routes_to_human(self):
+        result = agent.demo_reply('有没有终身保修？', [])
+        self.assertTrue(result['handoff_recommended'])
+        self.assertIn('没有匹配依据', result['reply'])
+
+    def test_nonfinite_budget_rejected(self):
+        with self.assertRaises(ValueError):
+            agent.run_tool('search_products', {'budget': float('nan')})
+
+    def test_empty_and_out_of_stock_data(self):
+        with agent.data_scope({'products': [], 'orders': [], 'policies': []}):
+            self.assertEqual(agent.run_tool('search_products', {}), [])
+        product = {**agent.DATA['products'][0], 'stock': 0}
+        with agent.data_scope({'products':[product], 'orders':[], 'policies':[]}):
+            self.assertEqual(agent.run_tool('search_products', {}), [])
+
+    @patch.dict('os.environ', {'DEEPSEEK_API_KEY':'test-placeholder'})
+    def test_model_cannot_answer_from_empty_policy_result(self):
+        from io import BytesIO
+        first = {'choices':[{'message':{'role':'assistant','content':None,'tool_calls':[{'id':'policy1','type':'function','function':{'name':'lookup_policy','arguments':'{"query":"终身保修"}'}}]}}]}
+        second = {'choices':[{'message':{'role':'assistant','content':'承诺终身保修'}}]}
+        with patch('urllib.request.urlopen', side_effect=[BytesIO(json.dumps(first).encode()), BytesIO(json.dumps(second).encode())]):
+            result = agent.chat('终身保修政策', [])
+            self.assertNotIn('承诺终身保修', result['reply'])
+            self.assertTrue(result['handoff_recommended'])
+
     @patch.dict('os.environ', {'DEEPSEEK_API_KEY':'test-placeholder'})
     def test_model_tool_roundtrip(self):
         first = {'choices':[{'message':{'role':'assistant','content':None,'tool_calls':[{'id':'call1','type':'function','function':{'name':'get_order','arguments':'{"order_id":"DEMO1001"}'}}]}}]}

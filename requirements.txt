@@ -1,0 +1,2 @@
+# Production WSGI server; local development and tests use the standard library.
+waitress==3.0.2

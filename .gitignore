@@ -11,4 +11,8 @@ __pycache__/
 *.pem
 *.key
 data/private/
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
 .DS_Store
