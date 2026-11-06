@@ -1,0 +1,12 @@
+{
+  "products": [
+    {"id":"P001","name":"云感降噪耳机","category":"数码","price":299,"cost":180,"stock":120,"sales_30d":86,"returns_30d":3,"tags":["通勤","耳机","降噪"],"features":["主动降噪","32 小时综合续航","轻量佩戴"]},
+    {"id":"P002","name":"轻行保温杯","category":"家居","price":89,"cost":35,"stock":240,"sales_30d":158,"returns_30d":2,"tags":["通勤","杯子","保温杯"],"features":["316 不锈钢内胆","500ml 容量","便携杯盖"]},
+    {"id":"P003","name":"折叠桌面支架","category":"数码","price":59,"cost":22,"stock":180,"sales_30d":112,"returns_30d":4,"tags":["办公","手机","支架"],"features":["角度可调","折叠收纳","防滑底座"]},
+    {"id":"P004","name":"漫步轻量背包","category":"服饰","price":199,"cost":105,"stock":60,"sales_30d":42,"returns_30d":5,"tags":["通勤","背包","旅行"],"features":["20L 容量","独立电脑隔层","轻量面料"]},
+    {"id":"P005","name":"柔光阅读台灯","category":"家居","price":159,"cost":72,"stock":95,"sales_30d":64,"returns_30d":1,"tags":["办公","学习","台灯"],"features":["三档色温","触控调光","定时关闭"]},
+    {"id":"P006","name":"日常运动毛巾","category":"运动","price":39,"cost":14,"stock":300,"sales_30d":96,"returns_30d":2,"tags":["运动","健身","毛巾"],"features":["速干面料","便携挂环","独立收纳袋"]}
+  ],
+  "orders": [{"id":"DEMO1001","status":"运输中","items":["云感降噪耳机"],"amount":299,"carrier":"模拟物流","tracking":"DEMO-TRACK-001","timeline":["模拟第 1 天：支付成功","模拟第 2 天：仓库发货","模拟第 3 天：运输中"]},{"id":"DEMO1002","status":"待发货","items":["轻行保温杯"],"amount":89,"carrier":null,"tracking":null,"timeline":["模拟第 1 天：支付成功","等待仓库处理"]}],
+  "policies":[{"topic":"退换货","keywords":["退货","退款","换货","售后"],"answer":"演示店铺支持签收后 7 天内申请无理由退货，商品须完好且不影响二次销售；质量问题由店铺承担运费。此为模拟政策，实际以店铺规则为准。"},{"topic":"发货配送","keywords":["发货","配送","快递","运费"],"answer":"演示店铺通常在付款后 48 小时内发货，订单满 99 元包邮。具体订单状态请提供 DEMO1001 或 DEMO1002。"},{"topic":"人工客服","keywords":["人工","投诉"],"answer":"建议交由人工客服核实。当前为演示项目，尚未连接真实客服系统，不会自动发送消息或办理退款。"}]
+}
