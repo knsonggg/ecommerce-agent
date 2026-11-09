@@ -2,7 +2,7 @@ const $ = s => document.querySelector(s);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stamp = value => new Date(value * 1000).toLocaleString('zh-CN', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
 const money = value => '¥' + Number(value).toFixed(2);
-const labels = {aftersales:'退单与退款',overview:'工作概览',chat:'智能接待',products:'商品管理',orders:'订单查询',policies:'知识库',analysis:'选品分析',tickets:'人工工单',settings:'系统与成员'};
+const labels = {videos:'商品广告视频',aftersales:'退单与退款',overview:'工作概览',chat:'智能接待',products:'商品管理',orders:'订单查询',policies:'知识库',analysis:'选品分析',tickets:'人工工单',settings:'系统与成员'};
 const toolNames = {check_aftersale:'售后条件检查',request_aftersale:'提交模拟售后',search_products:'商品资料检索',get_order:'订单状态查询',analyze_selection:'经营指标计算',lookup_policy:'已发布知识检索'};
 const statusNames = {open:'待处理',in_progress:'处理中',resolved:'已完成'};
 const state = {user:null,view:'overview',overview:null,cid:null,busy:false,rows:[],conversations:[],setup:false,ticketFilter:'all',request:null};
@@ -55,7 +55,8 @@ async function view(name) {
   document.querySelectorAll('nav [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
   $('#content').innerHTML=empty('正在加载…');
   try {
-    if(name==='overview') await overviewView();
+    if(name==='videos') {const videoModule=await import('/video.js'); await videoModule.mount({api,esc,toast});}
+    else if(name==='overview') await overviewView();
     else if(name==='chat') await chatView();
     else if(['products','orders','policies'].includes(name)) await recordsView(name);
     else if(name==='tickets') await ticketsView();

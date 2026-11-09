@@ -198,6 +198,32 @@ class WorkflowTests(unittest.TestCase):
         data=json.dumps(self.req('/api/audits'))
         self.assertNotIn(PASSWORD,data)
 
+    @patch.dict(os.environ, {'DEEPSEEK_API_KEY':''})
+    def test_video_project_lifecycle_permissions_and_validation(self):
+        project=self.req('/api/videos',{'product_id':'P001'},201)
+        self.assertEqual(project['mode'],'template')
+        self.assertEqual(len(project['scenes']),3)
+        self.req('/api/videos/'+project['id'],status=404,client=self.staff)
+        self.req('/api/videos/save',{**project,'images':['https://example.com/image.png']},400)
+        self.req('/api/videos/save',{**project,'images':['data:image/png;base64,PHN2Zz4=']},400)
+        self.req('/api/videos/save',{**project,'scenes':[]},400)
+        saved=self.req('/api/videos/save',project)
+        self.assertEqual(saved['version'],2)
+        self.req('/api/videos/save',project,409)
+        self.assertEqual(self.req('/api/videos')[0]['id'],project['id'])
+        self.req('/api/videos',{'product_id':'missing'},404)
+
+    @patch.dict(os.environ, {'DEEPSEEK_API_KEY':'test-placeholder'})
+    def test_video_ai_structured_plan(self):
+        from io import BytesIO
+        plan={'scenes':[{'title':'耳机','caption':'主动降噪','visual':'商品全景'} for _ in range(3)]}
+        response={'choices':[{'message':{'content':json.dumps(plan)}}]}
+        with patch('urllib.request.urlopen',return_value=BytesIO(json.dumps(response).encode())):
+            project=self.req('/api/videos',{'product_id':'P001'},201)
+        self.assertEqual(project['mode'],'deepseek')
+        with patch('urllib.request.urlopen',return_value=BytesIO(b'{"choices":[{"message":{"content":"bad"}}]}')):
+            self.req('/api/videos',{'product_id':'P001'},502)
+
     def test_small_refund_auto_simulation_and_idempotency(self):
         body={'order_id':'DEMO1002','kind':'refund_only','reason':'顾客不需要了','request_id':'refund-small'}
         case=self.req('/api/aftersales',body,client=self.staff)

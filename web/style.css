@@ -1193,3 +1193,9 @@ dialog::backdrop {
     flex-wrap:wrap;
   }
 }
+.ad-thumbs { display:flex; gap:10px; margin:15px 0; }
+.ad-thumbs img { width:74px; height:74px; object-fit:contain; border:1px solid #dce5d6; border-radius:8px; }
+.ad-canvas,.ad-result { display:block; max-width:100%; max-height:480px; margin:18px auto; border-radius:9px; }
+#ad-editor details { margin:17px 0; border-bottom:1px solid #e3e8e2; padding-bottom:12px; }
+#ad-editor summary { cursor:pointer; font-size:12px; color:#53715b; }
+#ad-download { display:inline-block; text-decoration:none; margin-top:12px; }

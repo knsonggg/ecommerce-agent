@@ -149,3 +149,13 @@ python manage.py reset-password your_username
 - 金额由服务器从订单读取，以整数分记录，不接受模型或前端指定退款金额。暂不支持部分退款、自动退库存、自动验收或退货运费结算。
 
 模拟执行只更新本地订单和售后记录，**未发生真实资金划转**。全额退款金额仅按当前订单录入金额核定，尚未对接支付实收、优惠分摊与平台退款账本。100元为本地演示规则，不代表商家的真实授权额度。真实上线必须接入平台并另行确定规则。
+
+## 商品广告视频
+
+新增“商品广告视频”：选择店铺商品、目标人群、风格和画幅，生成三段脚本/分镜；上传1–3张JPEG/PNG，编辑字幕与画面说明，保存项目后在浏览器合成15秒无声广告，支持9:16竖屏与16:9横屏，提供预览和视频下载、脚本JSON导出。
+
+DeepSeek配置后生成结构化脚本；未配置时明确使用模板。图片不发送给DeepSeek，模型只接收商品名称、售价、卖点、人群和风格。当前不分析图片内容，不生成全新视频镜头，也不提供配音、音乐和自动发布。画面说明是拍摄参考，实际合成使用图片推进动效、标题和字幕。内容发布前须人工核实。
+
+浏览器使用Canvas captureStream与MediaRecorder，优先导出WebM，浏览器支持时可回退MP4；不保证输出MP4。使用新版Chrome/Edge及localhost或HTTPS。保持生成页面在前台，切换到后台会取消编码，避免产生停滞画面。导出文件需主动下载保存；视频文件不存服务器，分镜与压缩图片保存在私有数据库，刷新后可从最近作品恢复。每账号最多50个项目，各用户只能访问自己的视频项目。
+
+原图单张≤5MB且≤1600万像素，浏览器缩放到最长边1000像素并压缩，服务端限制压缩图片大小、格式和项目版本；不接受远程URL或SVG。生产反向代理仍使用1MB请求体上限。技术参考：[DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode/)、[Canvas captureStream](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/captureStream)、[MediaRecorder](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder)。

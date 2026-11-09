@@ -18,6 +18,7 @@ from wsgiref.simple_server import WSGIServer, WSGIRequestHandler, make_server
 from agent import ROOT, chat, data_scope, load_env, run_tool, explicit_aftersale
 from store import Store, Problem, text
 from aftersales import AfterSales
+from video_ads import VideoAds
 
 load_env()
 LOG = logging.getLogger('commerce')
@@ -47,6 +48,7 @@ class App:
     def __init__(self, store=None, origin=None, production=False):
         self.store = store or Store(os.environ.get('COMMERCE_DB') or None)
         self.aftersales = AfterSales(self.store)
+        self.video_ads = VideoAds(self.store)
         self.origin = (origin or os.environ.get('APP_ORIGIN', 'http://127.0.0.1:8000')).rstrip('/')
         self.production = production
         parsed = urlsplit(self.origin)
@@ -113,7 +115,7 @@ class App:
             LOG.error('request=%s type=%s', request_id, type(error).__name__)
             status, data, mime = 500, {'error': '服务暂时无法完成请求，请联系管理员并提供请求编号。', 'request_id': request_id}, 'application/json; charset=utf-8'
         raw = data if isinstance(data, bytes) else json.dumps(data, ensure_ascii=False).encode()
-        headers += [('Content-Type', mime), ('Content-Length', str(len(raw))), ('Cache-Control', 'no-store'), ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'), ('Referrer-Policy', 'same-origin'), ('X-Request-ID', request_id), ('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")]
+        headers += [('Content-Type', mime), ('Content-Length', str(len(raw))), ('Cache-Control', 'no-store'), ('X-Content-Type-Options', 'nosniff'), ('X-Frame-Options', 'DENY'), ('Referrer-Policy', 'same-origin'), ('X-Request-ID', request_id), ('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")]
         if self.production:
             headers.append(('Strict-Transport-Security', 'max-age=31536000'))
         start_response(f'{status} {HTTPStatus(status).phrase}', headers)
@@ -126,7 +128,7 @@ class App:
         def ok(data, status=200, headers=None):
             return status, data, 'application/json; charset=utf-8', headers or []
         if method == 'GET':
-            files = {'/': ('index.html', 'text/html; charset=utf-8'), '/app.js': ('app.js', 'text/javascript; charset=utf-8'), '/style.css': ('style.css', 'text/css; charset=utf-8')}
+            files = {'/video.js': ('video.js', 'text/javascript; charset=utf-8'), '/': ('index.html', 'text/html; charset=utf-8'), '/app.js': ('app.js', 'text/javascript; charset=utf-8'), '/style.css': ('style.css', 'text/css; charset=utf-8')}
             if path in files:
                 filename, mime = files[path]
                 return 200, (ROOT / 'web' / filename).read_bytes(), mime, []
@@ -147,6 +149,21 @@ class App:
         if not user:
             raise Problem(401, '请先登录商家工作台')
         uid = user['id']
+        if method=='GET' and path=='/api/videos':
+            return ok(self.video_ads.list(uid))
+        video_match=re.fullmatch(r'/api/videos/([a-f0-9]{32})',path)
+        if method=='GET' and video_match:
+            return ok(self.video_ads.get(uid,video_match[1]))
+        if method=='POST' and path=='/api/videos':
+            self.limiter.check('video:'+uid,5,60)
+            if not self.model_slots.acquire(blocking=False):
+                raise Problem(429,'生成服务繁忙，请稍后重试')
+            try:
+                return ok(self.video_ads.create(uid,body),201)
+            finally:
+                self.model_slots.release()
+        if method=='POST' and path=='/api/videos/save':
+            return ok(self.video_ads.save(uid,body))
         if method == 'POST' and path == '/api/logout':
             self.store.logout(token)
             return ok({'ok': True}, headers=[self.cookie('', True)])
